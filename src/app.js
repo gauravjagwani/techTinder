@@ -1,5 +1,8 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
+const validator = require("validator");
 
+const { validateSignUpData } = require("./utils/validation");
 
 const app = express();
 const connectDB = require("./config/database");
@@ -8,25 +11,58 @@ app.use(express.json());
 const User = require("./models/user");
 
 //* POST API for signup
-app.post("/signup", (req, res) => {
-  console.log(req.body);
+app.post("/signup", async (req, res) => {
+  // Validation of data
+  try {
+    validateSignUpData(req);
+    const { firstName, lastName, emailId, password } = req.body;
 
-  // Creating a new instance of the User model
+    // Encrypt the password
+    const passwordHash = await bcrypt.hash(password, 10);
+    console.log(passwordHash);
 
-  const user = new User(req.body);
+    // Creating a new instance of the User model
 
-  // Save Data on database
-  user
-    .save()
-    .then(() => {
-      {
-        console.log("Data Saved");
-        res.send("User Added Successfully");
-      }
-    })
-    .catch((err) => {
-      res.status(400).send("Error saving the User:" + err.message);
+    const user = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: passwordHash,
     });
+
+    // Save Data on database
+    await user.save();
+    console.log("Data Saved");
+    res.send("User Added Successfully");
+  } catch (err) {
+    res.status(400).send("Error creating a Profile:" + err.message);
+  }
+});
+
+// * Login API
+
+app.post("/login", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
+
+    if (!validator.isEmail(emailId)) {
+      throw new Error("Enter a valid mail");
+    }
+    const user = await User.findOne({ emailId: emailId });
+    if (!user) {
+      throw new Error("Invalid Credentials");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (isPasswordValid) {
+      res.send("Login Successfull");
+    } else {
+      throw new Error("Invalid Credentials");
+    }
+  } catch (err) {
+    res.status(400).send("Error Logging In:" + err.message);
+  }
 });
 
 // * GET user API
