@@ -1,5 +1,6 @@
 const express = require("express");
 
+
 const app = express();
 const connectDB = require("./config/database");
 
@@ -69,14 +70,32 @@ app.delete("/user", async (req, res) => {
 
 //* Update API
 
-app.patch("/user", async (req, res) => {
-  const userId = req.body.userId;
+app.patch("/user/:userId", async (req, res) => {
+  const userId = req.params?.userId;
   const data = req.body;
+
   try {
+    const ALLOWED_UPDATES = [
+      "userId",
+      "password",
+      "about",
+      "photoUrl",
+      "skills",
+    ];
+    const isAllowed = Object.keys(data).every((k) =>
+      ALLOWED_UPDATES.includes(k)
+    );
+
+    if (!isAllowed) {
+      throw new Error("Not allowed to update the field");
+    }
+    if (data.skills.length > 10) {
+      throw new Error("More than 10 skills not allowed");
+    }
     const user = await User.findByIdAndUpdate({ _id: userId }, data);
     res.send("User Updated Successfully");
   } catch (err) {
-    res.status(404).send("Something went Wrong");
+    res.status(404).send("UPDATE FAILED:" + err.message);
   }
 });
 
