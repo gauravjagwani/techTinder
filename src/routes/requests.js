@@ -98,9 +98,20 @@ requestRouter.post(
       const connectionRequest = await ConnectionRequestModel.findOne({
         _id: requestID,
         toUserId: loggedInUser._id,
-        status: "Intrested",
+        status: "interested",
       });
-    } catch (error) {}
+      if (!connectionRequest) {
+        return res
+          .status(400)
+          .json({ messgage: "Connection Request not found" });
+      }
+      connectionRequest.status = status;
+
+      const data = await connectionRequest.save();
+      res.json({ message: "Connection request " + status, data });
+    } catch (err) {
+      res.status(400).send("ERROR: " + err.message);
+    }
   }
 );
 
